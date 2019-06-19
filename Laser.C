@@ -5,14 +5,19 @@
 #include "TH1.h"
 #include "TF1.h"
 #include "TLeaf.h"
+#include "TCanvas.h"
 #include <string>
 #include <iostream>
+
+using namespace std;
 
 /*
  * 26.07.2018
  * Laser class that is used by HistoricalFile.C to create a historical file of all PMT laser calibration runs
  * Used by LaserValidation.C to update the historical file
  * Contains all the calculations done on the *laser_calibrations_validate_c18.root file
+ *
+ * 19.06.2019 added function for fitting and drawing single channels, to look by hand
  */
 
 double SkewGaus(double* x, double* params); // mathematical function defined in the bottom
@@ -37,6 +42,9 @@ class Laser{
 		double* GausFit();
 		double* SkewGausFit();
 		int BadChannels();
+		
+        // if we want to look at single channels
+        TCanvas* GausFit(int lg);
 
 	private:
 		int run;
@@ -56,12 +64,13 @@ class Laser{
 Laser::Laser(int runnum){
 	run = runnum;
 	// adding zeros if necessary
-	std::string zeros;
+	string zeros;
 	if(run <= 9999){zeros = "00";}
 	else if(run <= 99999){zeros = "0";}
 	else{zeros = "";}
 
-	sprintf(fname, "/bxstorage/rootfiles/cycle_18/laser_run/Run%s%i_laser_calibrations_validate_c18.root", zeros.c_str(), run);
+	sprintf(fname, "/storage/gpfs_data/borexino/rootfiles/cycle_18/laser_run/Run%s%i_laser_calibrations_validate_c18.root", zeros.c_str(), run); // CNAF
+//	sprintf(fname, "/bxstorage/rootfiles/cycle_18/laser_run/Run%s%i_laser_calibrations_validate_c18.root", zeros.c_str(), run); // bxmaster
 	
 	f = TFile::Open(fname);
 	f->GetObject("bxtree",t);
@@ -132,7 +141,7 @@ double* Laser::SkewGausFit(){
   fit->GetParameters(par);
 
 	if(fres != 0 || par[2] <= 0 || par[2] > 10 || par[3] > 10){
-		std::cout << "!! WARNING: bad fit! zero returned!" << std::endl;
+		cout << "!! WARNING: bad fit! zero returned!" << endl;
 		for(int i = 0; i < 4; i++){par[i] = 0;}
 	}
 
@@ -204,6 +213,42 @@ int Laser::BadChannels(){
 
   return badcount;
 
+}
+
+
+TCanvas* Laser::GausFit(int lg){
+    /* copying the fitting done in bx_calib_laben_time_align */
+
+	TF1* fit = new TF1("g0", "gaus", 500., 1000.);
+
+    char pname[10];
+    sprintf(pname, "ch%i", lg);
+    TH1D* pch = h->ProjectionY(pname, lg, lg);
+	
+    int entries_channel = (int) pch->Integral();
+    if(!entries_channel){
+        cout << "Lg " << lg << " has no entries" << endl;
+        exit(EXIT_FAILURE);
+    }
+    
+    int max_bin_channel = pch->GetMaximumBin();
+    int max_used = max_bin_channel;
+    if (max_bin_channel < 240 || max_bin_channel > 340) max_used = maxbin;
+    int peak_entries = (int) pch->Integral(max_used - 20, max_used + 20);
+    
+    if (peak_entries < 100 || (double) peak_entries / (double) entries_channel < 0.10) {
+        cout << "Lg " << lg << " low statistics" << endl;
+        exit(EXIT_FAILURE);
+    }
+
+    double max_x_ch = pch->GetBinCenter(max_used);
+	fit->SetParameters(peak_entries, max_x_ch, 3.);
+	fit->SetRange(max_x_ch - 12., max_x_ch + 12.);
+    
+    TCanvas* c = new TCanvas(pname, pname);
+	pch->Fit("g0", "QRL");
+    pch->Draw("same");
+    return c;
 }
 
 // --------------- helper function --------------- //
