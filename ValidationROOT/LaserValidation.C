@@ -16,6 +16,9 @@
 using namespace std;
 void DisplayLaser();
 
+const string histfname = "laser_history_c19.csv"; // test
+//    histfname = "/home/production/laser_history.csv"; // official
+
 // ------------------ main class for plotting ----------------- //
 
 class Plots{
@@ -42,7 +45,7 @@ class Plots{
 
 void UpdateLaserRuns(int runnum){
 	// open the historical file and check if this run already exists
-	ifstream f("/home/production/laser_history.csv");
+	ifstream f(histfname.c_str());
 	int run;
 	string line;
 	// get rid of the header
@@ -60,7 +63,7 @@ void UpdateLaserRuns(int runnum){
 	f.close();
 
 	// if not present, update the file
-	ofstream out("/home/production/laser_history.csv", fstream::app);
+	ofstream out(histfname.c_str(), fstream::app);
 
 	// class defined in Laser.C with all the calculations
 	Laser* las  = new Laser(runnum);    
@@ -88,7 +91,7 @@ void UpdateLaserRuns(int runnum){
 	cout << "Updated the file with run " << runnum << endl;
 
 	// show the plots
-	DisplayLaser();
+//	DisplayLaser();
 	
 }
 
@@ -107,6 +110,8 @@ void DisplayLaser(){
 // ------------------ constructor ----------------- //
 
 Plots::Plots(){
+
+
 	int r1 = 5000; int r2 = 60000; int rbins = r2 - r1;
 
 	histo[0] = new TH1F("hgaus", "Gaus sigma", rbins, r1, r2);
@@ -123,7 +128,7 @@ void Plots::FillHistos(){
 	cout << "Reading info..." << endl;
 
 	// read the file
-	ifstream f("/home/production/laser_history.csv");
+	ifstream f(histfname.c_str());
 	int nlive, tt8, nentries, badch;
 	double maxX, maxY, gausAmp, gausMean, gausSigma, skewAmp, skewMean, skewLeft, skewRight;
 	// get rid of the header

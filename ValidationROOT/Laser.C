@@ -61,7 +61,7 @@ Laser::Laser(int runnum){
 	else if(run <= 99999){zeros = "0";}
 	else{zeros = "";}
 
-	sprintf(fname, "/bxstorage/rootfiles/cycle_18/laser_run/Run%s%i_laser_calibrations_validate_c18.root", zeros.c_str(), run);
+	sprintf(fname, "/bxstorage/rootfiles/cycle_19/laser_run/Run%s%i_laser_calibrations_validate_c19.root", zeros.c_str(), run);
 	
 	f = TFile::Open(fname);
 	f->GetObject("bxtree",t);
